@@ -1,0 +1,892 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CERRT-NG Website Monitor - Multi-Scan</title>
+     <link href="{% static 'assets/img/apple-touch-icon.png' %}" rel="apple-touch-icon">
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Nunito:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
+
+  <!-- Vendor CSS Files -->
+  <link href="{% static 'assets/vendor/bootstrap/css/bootstrap.min.css' %}" rel="stylesheet">
+  <link href="{% static 'assets/vendor/bootstrap-icons/bootstrap-icons.css' %}" rel="stylesheet">
+  <link href="{% static 'assets/vendor/aos/aos.css' %}" rel="stylesheet">
+  <link href="{% static 'assets/vendor/swiper/swiper-bundle.min.css' %}" rel="stylesheet">
+
+  <!-- Main CSS File -->
+  <link href="{% static 'assets/css/main.css' %}" rel="stylesheet">
+  
+  <!-- Responsive Libraries CSS -->
+  <link href="{% static 'responsive-libraries.css' %}" rel="stylesheet">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
+    <style>
+      .url-list-container {
+        margin-top: 1.5rem;
+        max-height: 400px;
+        overflow-y: auto;
+        border: 2px dashed #dee2e6;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        background: #f8f9fa;
+      }
+      
+      .url-list-container:empty::before {
+        content: "Added URLs will appear here...";
+        color: #6c757d;
+        font-style: italic;
+        display: block;
+        text-align: center;
+      }
+      
+      .url-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+        background: white;
+        border-radius: 0.25rem;
+        border: 1px solid #dee2e6;
+      }
+      
+      .url-item:last-child {
+        margin-bottom: 0;
+      }
+      
+      .url-text {
+        flex: 1;
+        word-break: break-all;
+        margin-right: 1rem;
+      }
+      
+      .url-actions {
+        display: flex;
+        gap: 0.5rem;
+      }
+      
+      .url-status-badge {
+        font-size: 0.8rem;
+        padding: 0.25rem 0.5rem;
+        margin-right: 0.5rem;
+      }
+      
+      .scan-progress {
+        margin-top: 1rem;
+        display: none;
+      }
+      
+      .scan-progress.active {
+        display: block;
+      }
+      
+      .current-scan-info {
+        padding: 1rem;
+        background: #e7f3ff;
+        border-left: 4px solid #0d6efd;
+        border-radius: 0.25rem;
+        margin-bottom: 1rem;
+      }
+      
+      .results-table-container {
+        margin-top: 2rem;
+        display: none;
+      }
+      
+      .results-table-container.active {
+        display: block;
+      }
+      
+      .results-table {
+        width: 100%;
+        background: white;
+        border-radius: 0.5rem;
+        overflow: hidden;
+        box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+      }
+      
+      .results-table th {
+        background: #198754;
+        color: white;
+        font-weight: 600;
+        padding: 1rem;
+        text-align: left;
+      }
+      
+      .results-table td {
+        padding: 1rem;
+        border-bottom: 1px solid #dee2e6;
+        vertical-align: middle;
+      }
+      
+      .results-table tr:last-child td {
+        border-bottom: none;
+      }
+      
+      .results-table tbody tr:hover {
+        background: #f8f9fa;
+      }
+      
+      .url-cell {
+        max-width: 300px;
+        word-break: break-all;
+      }
+      
+      .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: nowrap;
+      }
+      
+      .vulnerability-score {
+        position: relative;
+        width: 60px;
+        height: 60px;
+        margin: 0 auto;
+      }
+      
+      .vulnerability-score svg {
+        transform: rotate(-90deg);
+      }
+      
+      .vulnerability-score .score-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 0.9rem;
+        font-weight: bold;
+      }
+      
+      .score-good { color: #28a745; }
+      .score-medium { color: #ffc107; }
+      .score-bad { color: #dc3545; }
+      
+      /* Modal Styles */
+      .modal-dialog-scrollable .modal-body {
+        max-height: calc(100vh - 200px);
+        overflow-y: auto;
+      }
+      
+      .modal-header {
+        background: #198754;
+        color: white;
+      }
+      
+      .modal-header .btn-close {
+        filter: invert(1);
+      }
+      
+      .modal-url {
+        font-size: 0.9rem;
+        word-break: break-all;
+        color: #e0e0e0;
+        margin-top: 0.5rem;
+      }
+      
+      .spinner-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+      }
+      
+      .spinner-overlay.active {
+        display: flex;
+      }
+      
+      .spinner-content {
+        background: white;
+        padding: 2rem;
+        border-radius: 0.5rem;
+        text-align: center;
+      }
+      
+      @media (max-width: 768px) {
+        .results-table {
+          font-size: 0.875rem;
+        }
+        
+        .action-buttons {
+          flex-direction: column;
+        }
+        
+        .action-buttons .btn {
+          width: 100%;
+        }
+      }
+    </style>
+</head>
+<body class="index-page">
+  <main class="main">
+    <!-- Hero Section -->
+    <section id="hero" class="hero section">
+      <div class="container" data-aos="fade-up" data-aos-delay="100">
+        <div class="row justify-content-center">
+          <div class="col-lg-8" data-aos="zoom-in" data-aos-delay="200">
+            <div class="hero-content text-center">
+              <div class="hero-badge" data-aos="fade-down" data-aos-delay="300">
+                <i class="bi bi-shield-check"></i>
+                <span>CERRT-NG Website Scanner</span>
+              </div>
+              <h1 class="hero-title" data-aos="fade-up" data-aos-delay="400">Scan Multiple URLs</h1>
+
+              <form id="scan-form" class="scan-form mt-4" data-aos="fade-up" data-aos-delay="600" autocomplete="off">
+                {% csrf_token %}
+                
+                <div class="input-group input-group-lg">
+                  <input type="url" class="form-control" id="url-input" placeholder="https://example.gov.ng">
+                  <button type="button" class="btn btn-outline-success" id="add-url-btn">
+                    <i class="bi bi-plus-circle me-1"></i>Add URL
+                  </button>
+                </div>
+                
+                <div class="form-text mt-2">Enter URLs one at a time and click "Add URL"</div>
+                
+                <!-- URL List -->
+                <div id="url-list" class="url-list-container"></div>
+                
+                <button type="submit" class="btn btn-success btn-lg px-4 mt-3 w-100" id="scan-btn" disabled>
+                  <span class="btn-text">Start Scanning</span>
+                  <span class="spinner-border spinner-border-sm d-none ms-2" role="status" aria-hidden="true"></span>
+                  <i class="bi bi-play-fill ms-2 btn-icon"></i>
+                </button>
+                
+                <div class="form-text mt-2">We respect your privacy. No data is stored.</div>
+                
+                <!-- Progress Section -->
+                <div id="scan-progress" class="scan-progress">
+                  <div class="current-scan-info">
+                    <div class="d-flex align-items-center mb-2">
+                      <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                      <strong>Currently Scanning:</strong>
+                    </div>
+                    <div id="current-url" class="ms-4">-</div>
+                    <div class="progress mt-2">
+                      <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                    </div>
+                    <div class="text-center mt-2">
+                      <small id="progress-text">0 of 0 completed</small>
+                    </div>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section><!-- /Hero Section -->
+
+    <!-- Results Table Section -->
+    <section class="container" data-aos="fade-up">
+      <div id="results-table-container" class="results-table-container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h3><i class="bi bi-list-check me-2"></i>Scan Results</h3>
+          <button class="btn btn-outline-danger" id="clear-all-btn">
+            <i class="bi bi-trash me-2"></i>Clear All
+          </button>
+        </div>
+        
+        <div class="table-responsive">
+          <table class="results-table">
+            <thead>
+              <tr>
+                <th style="width: 60px;">#</th>
+                <th>URL</th>
+                <th style="width: 120px;">Vulnerability Score</th>
+                <th style="width: 120px;">Status</th>
+                <th style="width: 250px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="results-table-body">
+              <!-- Results will be added here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Result Details Modal -->
+  <div class="modal fade" id="resultModal" tabindex="-1" aria-labelledby="resultModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable modal-xl">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div>
+            <h5 class="modal-title" id="resultModalLabel">Scan Details</h5>
+            <div class="modal-url" id="modal-url"></div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="modal-body">
+          <!-- Result content will be inserted here -->
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-success" id="modal-download-btn">
+            <i class="bi bi-download me-2"></i>Download Report (PDF)
+          </button>
+          <button type="button" class="btn btn-success" id="modal-download-docx-btn">
+              <i class="bi bi-file-earmark-word me-2"></i>Download Report (DOCX)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div class="spinner-overlay" id="loading-overlay">
+    <div class="spinner-content">
+      <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <h5 id="loading-text">Processing scan...</h5>
+    </div>
+  </div>
+  
+  <!-- Scroll Top -->
+  <a href="#" id="scroll-top" class="scroll-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
+
+  <!-- Vendor JS Files -->
+  <script src="{% static 'assets/vendor/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+  <script src="{% static 'assets/vendor/php-email-form/validate.js' %}"></script>
+  <script src="{% static 'assets/vendor/aos/aos.js' %}"></script>
+  <script src="{% static 'assets/vendor/swiper/swiper-bundle.min.js' %}"></script>
+
+  <!-- Main JS File -->
+  <script src="{% static 'assets/js/main.js' %}"></script>
+  
+  <!-- Scanner Handlers -->
+  <script type="module">
+    import { renderSecurityHeaders } from '{% static "scanner/securityHeadersHandler.js" %}';
+    import { renderEmailSecurity } from '{% static "scanner/emailSecurityHandlers.js" %}';
+    import { renderFrontendLibraries } from '{% static "scanner/frontendLibrariesHandler.js" %}';
+    import { renderSSLResults } from '{% static "scanner/sslHandler.js" %}';
+    
+    // Make handlers available globally
+    window.renderSecurityHeaders = renderSecurityHeaders;
+    window.renderEmailSecurity = renderEmailSecurity;
+    window.renderFrontendLibraries = renderFrontendLibraries;
+    window.renderSSLResults = renderSSLResults;
+  </script>
+  
+  <!-- Multi-URL Scanner Handler -->
+  <script>
+    $(document).ready(function() {
+      let urlList = [];
+      let scanResults = [];
+      let resultModal;
+      
+      // Initialize Bootstrap modal
+      const modalElement = document.getElementById('resultModal');
+      if (modalElement) {
+        resultModal = new bootstrap.Modal(modalElement);
+      }
+      
+      // Add URL to list
+      $('#add-url-btn').on('click', function() {
+        const urlInput = $('#url-input');
+        const url = urlInput.val().trim();
+        
+        if (!url) {
+          alert('Please enter a URL');
+          return;
+        }
+        
+        // Check if URL already exists
+        if (urlList.includes(url)) {
+          alert('This URL is already in the list');
+          return;
+        }
+        
+        // Add to list
+        urlList.push(url);
+        
+        // Add to UI
+        const urlItem = $(`
+          <div class="url-item" data-url="${url}">
+            <div class="url-text">
+              <span class="url-status-badge badge bg-secondary">Pending</span>
+              ${url}
+            </div>
+            <div class="url-actions">
+              <button type="button" class="btn btn-sm btn-danger remove-url-btn" data-url="${url}">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+          </div>
+        `);
+        
+        $('#url-list').append(urlItem);
+        
+        // Clear input
+        urlInput.val('');
+        urlInput.focus();
+        
+        // Enable scan button
+        $('#scan-btn').prop('disabled', false);
+      });
+      
+      // Allow Enter key to add URL
+      $('#url-input').on('keypress', function(e) {
+        if (e.which === 13) {
+          e.preventDefault();
+          $('#add-url-btn').click();
+        }
+      });
+      
+      // Remove URL from list
+      $(document).on('click', '.remove-url-btn', function() {
+        const url = $(this).data('url');
+        urlList = urlList.filter(u => u !== url);
+        $(this).closest('.url-item').remove();
+        
+        // Disable scan button if no URLs
+        if (urlList.length === 0) {
+          $('#scan-btn').prop('disabled', true);
+        }
+      });
+      
+      // Handle form submission - scan URLs one by one
+      $('#scan-form').on('submit', async function(e) {
+        e.preventDefault();
+        
+        if (urlList.length === 0) {
+          alert('Please add at least one URL');
+          return;
+        }
+        
+        const scanBtn = $('#scan-btn');
+        const btnText = scanBtn.find('.btn-text');
+        const btnIcon = scanBtn.find('.btn-icon');
+        const spinner = scanBtn.find('.spinner-border');
+        const progressSection = $('#scan-progress');
+        const progressBar = $('#progress-bar');
+        const progressText = $('#progress-text');
+        const currentUrlDisplay = $('#current-url');
+        
+        // Disable controls
+        scanBtn.prop('disabled', true);
+        $('#add-url-btn').prop('disabled', true);
+        $('#url-input').prop('disabled', true);
+        $('.remove-url-btn').prop('disabled', true);
+        btnText.text('Scanning...');
+        btnIcon.addClass('d-none');
+        spinner.removeClass('d-none');
+        
+        // Show progress
+        progressSection.addClass('active');
+        
+        // Clear previous results
+        $('#results-table-body').empty();
+        scanResults = [];
+        
+        // Show results table
+        $('#results-table-container').addClass('active');
+        
+        // Scan each URL one by one
+        for (let i = 0; i < urlList.length; i++) {
+          const url = urlList[i];
+          const urlItem = $(`.url-item[data-url="${url}"]`);
+          const badge = urlItem.find('.url-status-badge');
+          
+          // Update current URL display
+          currentUrlDisplay.text(url);
+          
+          // Update progress
+          const progress = ((i / urlList.length) * 100).toFixed(0);
+          progressBar.css('width', progress + '%');
+          progressText.text(`${i} of ${urlList.length} completed`);
+          
+          // Update status to scanning
+          badge.removeClass('bg-secondary bg-success bg-danger').addClass('bg-primary');
+          badge.text('Scanning...');
+          
+          try {
+            // Perform full scan for this URL
+            const result = await performFullScan(url);
+            
+            // Update status to success
+            badge.removeClass('bg-primary').addClass('bg-success');
+            badge.text('Completed');
+            
+            // Store result
+            scanResults.push({ url, result, success: true });
+            
+            // Add to table
+            addResultToTable(url, result, scanResults.length, true);
+            
+          } catch (error) {
+            // Update status to error
+            badge.removeClass('bg-primary').addClass('bg-danger');
+            badge.text('Failed');
+            
+            // Store error
+            scanResults.push({ url, error: error.message, success: false });
+            
+            // Add to table
+            addResultToTable(url, error.message, scanResults.length, false);
+          }
+        }
+        
+        // Complete progress
+        progressBar.css('width', '100%');
+        progressText.text(`${urlList.length} of ${urlList.length} completed`);
+        currentUrlDisplay.text('All scans completed!');
+        
+        // Re-enable controls
+        setTimeout(() => {
+          scanBtn.prop('disabled', false);
+          $('#add-url-btn').prop('disabled', false);
+          $('#url-input').prop('disabled', false);
+          $('.remove-url-btn').prop('disabled', false);
+          btnText.text('Start Scanning');
+          btnIcon.removeClass('d-none');
+          spinner.addClass('d-none');
+          progressSection.removeClass('active');
+        }, 2000);
+        
+        // Scroll to results
+        $('html, body').animate({
+          scrollTop: $('#results-table-container').offset().top - 100
+        }, 500);
+      });
+      
+      // Perform full scan (mimic original scanner.js)
+      async function performFullScan(url) {
+        const actions = [
+          { id: "security_headers", name: "Security Headers" },
+          { id: "email_security", name: "Email Security" },
+          { id: "frontend_libraries", name: "Frontend Libraries" },
+          { id: "ssl_info", name: "SSL Certificate" }
+        ];
+        
+        const resultContainer = $('<div></div>');
+        let totalScore = 0;
+        let scoreCount = 0;
+        
+        for (let action of actions) {
+          try {
+            const response = await runScanAction(url, action.id, action === actions[actions.length - 1]);
+            
+            // Render result to temporary container
+            const tempDiv = $('<div></div>');
+            handleScanResult(action.id, response, tempDiv);
+            resultContainer.append(tempDiv.html());
+            
+            // Extract score if available
+            if (response.result && response.result.summary && response.result.summary.score !== undefined) {
+              totalScore += response.result.summary.score;
+              scoreCount++;
+            }
+            
+          } catch (error) {
+            resultContainer.append(`<div class="alert alert-danger">Error in ${action.name}: ${error.message}</div>`);
+          }
+        }
+        
+        // Calculate average vulnerability score (100 - average security score)
+        const avgSecurityScore = scoreCount > 0 ? totalScore / scoreCount : 0;
+        const vulnerabilityScore = Math.round(100 - avgSecurityScore);
+        
+        return {
+          html: resultContainer.html(),
+          vulnerabilityScore: vulnerabilityScore
+        };
+      }
+      
+      // Run individual scan action
+      function runScanAction(url, actionId, isLastAction) {
+        return new Promise((resolve, reject) => {
+          $.ajax({
+            url: '/run-scan/',
+            type: 'POST',
+            data: {
+              url: url,
+              action: actionId,
+              last_action: isLastAction,
+              csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
+            },
+            dataType: 'json',
+            success: function(response) {
+              resolve(response);
+            },
+            error: function(xhr) {
+              reject(new Error(xhr.responseText || 'Scan failed'));
+            }
+          });
+        });
+      }
+      
+      // Handle scan result rendering
+      function handleScanResult(action, response, container) {
+        switch (action) {
+          case "security_headers":
+            if (window.renderSecurityHeaders) {
+              const tempContainer = $('<div id="result-container"></div>');
+              $('body').append(tempContainer);
+              window.renderSecurityHeaders(response.result, '0');
+              container.html(tempContainer.html());
+              tempContainer.remove();
+            }
+            break;
+          case "email_security":
+            if (window.renderEmailSecurity) {
+              const tempContainer = $('<div id="result-container"></div>');
+              $('body').append(tempContainer);
+              window.renderEmailSecurity(response, '0');
+              container.html(tempContainer.html());
+              tempContainer.remove();
+            }
+            break;
+          case "frontend_libraries":
+            if (window.renderFrontendLibraries) {
+              const tempContainer = $('<div id="result-container"></div>');
+              $('body').append(tempContainer);
+              window.renderFrontendLibraries(response, '0');
+              container.html(tempContainer.html());
+              tempContainer.remove();
+            }
+            break;
+          // case "ssl_info":
+          //   if (window.renderSSLResults) {
+          //     const tempContainer = $('<div></div>');
+          //     $('body').append(tempContainer);
+          //     window.renderSSLResults(response, '0', tempContainer);
+          //     container.html(tempContainer.html());
+          //     tempContainer.remove();
+          //   }
+          //   break;
+          // case "ssl_info":
+          //   if (window.renderSSLResults) {
+          //     const tempContainer = $('<div id="result-container"></div>');
+          //     $('body').append(tempContainer);
+          //     window.renderSSLResults(response, '0');
+          //     container.html(tempContainer.html());
+          //     tempContainer.remove();
+          //   }
+          //   break;
+          case "ssl_info":
+            if (window.renderSSLResults) {
+              const tempContainer = $('<div></div>');
+              $('body').append(tempContainer);
+              window.renderSSLResults(response, '0', tempContainer);
+              container.html(tempContainer.html());
+              tempContainer.remove();
+            }
+            break;
+        }
+      }
+      
+      // Add result to table with vulnerability score
+      function addResultToTable(url, content, index, success) {
+        let vulnerabilityScore = 0;
+        let scoreClass = 'score-good';
+        let scoreColor = '#28a745';
+        
+        if (success && content.vulnerabilityScore !== undefined) {
+          vulnerabilityScore = content.vulnerabilityScore;
+          if (vulnerabilityScore >= 70) {
+            scoreClass = 'score-bad';
+            scoreColor = '#dc3545';
+          } else if (vulnerabilityScore >= 40) {
+            scoreClass = 'score-medium';
+            scoreColor = '#ffc107';
+          }
+        }
+        
+        const statusBadge = success 
+          ? '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Success</span>'
+          : '<span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Failed</span>';
+        
+        const circumference = 2 * Math.PI * 18;
+        const offset = success ? circumference - (vulnerabilityScore / 100 * circumference) : 0;
+        
+        const row = $(`
+          <tr data-index="${index - 1}">
+            <td><strong>${index}</strong></td>
+            <td class="url-cell">${url}</td>
+            <td>
+              ${success ? `
+                <div class="vulnerability-score">
+                  <svg width="60" height="60">
+                    <circle cx="30" cy="30" r="18" fill="none" stroke="#e0e0e0" stroke-width="4"/>
+                    <circle cx="30" cy="30" r="18" fill="none" stroke="${scoreColor}" stroke-width="4" 
+                            stroke-dasharray="${circumference}" stroke-dashoffset="${offset}"/>
+                  </svg>
+                  <div class="score-text ${scoreClass}">${vulnerabilityScore}</div>
+                </div>
+                <div class="text-center"><small class="text-muted">Vulnerability</small></div>
+              ` : '<span class="text-muted">N/A</span>'}
+            </td>
+            <td>${statusBadge}</td>
+            <td>
+              <div class="action-buttons">
+                <button class="btn btn-sm btn-primary view-details-btn" data-index="${index - 1}" ${!success ? 'disabled' : ''}>
+                  <i class="bi bi-eye me-1"></i>View Details
+                </button>
+                <button class="btn btn-sm btn-success download-pdf-btn" data-index="${index - 1}" ${!success ? 'disabled' : ''}>
+                  <i class="bi bi-file-pdf me-1"></i>PDF
+                </button>
+                <button class="btn btn-sm btn-info download-html-btn" data-index="${index - 1}" ${!success ? 'disabled' : ''}>
+                  <i class="bi bi-file-code me-1"></i>HTML
+                </button>
+              </div>
+            </td>
+          </tr>
+        `);
+        
+        $('#results-table-body').append(row);
+      }
+      
+      // View Details button click
+      $(document).on('click', '.view-details-btn', function() {
+        const index = $(this).data('index');
+        const result = scanResults[index];
+        
+        if (result && result.success) {
+          $('#modal-url').text(result.url);
+          $('#modal-body').html(result.result.html);
+          $('#modal-download-btn').data('index', index).data('url', result.url);
+          resultModal.show();
+        }
+      });
+      
+      // Download PDF button in table
+      $(document).on('click', '.download-pdf-btn', function() {
+        const index = $(this).data('index');
+        const result = scanResults[index];
+        if (result && result.success) {
+          downloadPDF(result.url);
+        }
+      });
+      
+      // Download HTML button in table
+      $(document).on('click', '.download-html-btn', function() {
+        const index = $(this).data('index');
+        const result = scanResults[index];
+        if (result && result.success) {
+          downloadHTML(result.url, result.result.html);
+        }
+      });
+      
+      // Download PDF button in modal
+      $('#modal-download-btn').on('click', function() {
+        const url = $(this).data('url');
+        if (url) {
+          downloadPDF(url);
+        }
+      });
+      
+      // Download PDF function
+      function downloadPDF(url) {
+        $('#loading-overlay').addClass('active');
+        $('#loading-text').text('Generating PDF report...');
+        
+        window.location.href = `/download-report/?url=${encodeURIComponent(url)}`;
+        
+        setTimeout(() => {
+          $('#loading-overlay').removeClass('active');
+        }, 3000);
+      }
+      
+      // Download HTML function
+      function downloadHTML(url, html) {
+        const blob = new Blob([`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Security Scan Report - ${url}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+</head>
+<body>
+    <div class="container my-5">
+        <h1 class="mb-4">Security Scan Report</h1>
+        <p class="lead">URL: ${url}</p>
+        <p class="text-muted">Generated: ${new Date().toLocaleString()}</p>
+        <hr>
+        ${html}
+    </div>
+</body>
+</html>
+        `], { type: 'text/html' });
+        
+        const urlObj = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = urlObj;
+        a.download = `scan-report-${Date.now()}.html`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(urlObj);
+      }
+      
+      // Clear all results
+      $('#clear-all-btn').on('click', function() {
+        if (confirm('Are you sure you want to clear all results?')) {
+          $('#results-table-body').empty();
+          $('#results-table-container').removeClass('active');
+          scanResults = [];
+          
+          // Reset URL list
+          $('#url-list').empty();
+          urlList = [];
+          $('#scan-btn').prop('disabled', true);
+        }
+      });
+    });
+
+
+    $('#modal-download-docx-btn').on('click', function () {
+        const url = $('#modal-url').text();
+        const content = $('#modal-body').html();
+
+        downloadDocx(url, content);
+    });
+
+    function downloadDocx(url, htmlContent) {
+        const loading = $('#loading-overlay');
+        $('#loading-text').text('Generating .docx report...');
+        loading.addClass('active');
+
+        $.ajax({
+            url: "/download-docx/",
+            type: "POST",
+            data: {
+                url: url,
+                html: htmlContent,
+                csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
+            },
+            xhrFields: { responseType: 'blob' },
+            success: function (data) {
+                loading.removeClass('active');
+
+                const blob = new Blob([data], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+                const link = document.createElement("a");
+                link.href = window.URL.createObjectURL(blob);
+                link.download = "scan_report.docx";
+                link.click();
+            },
+            error: function () {
+                loading.removeClass('active');
+                alert("Failed to generate DOCX report");
+            }
+        });
+    }
+  </script>
+
+</body>
+</html>
